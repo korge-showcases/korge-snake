@@ -19,7 +19,7 @@ suspend fun main() = Korge(windowSize = Size(512, 512), backgroundColor = Colors
 	sceneContainer.changeTo { MyScene() }
 }
 
-class MyScene : PixelatedScene(320, 240) {
+class MyScene : PixelatedScene(256, 196) {
 	override suspend fun SContainer.sceneMain() {
         val tilesIDC = resourcesVfs["tiles.ase"].readImageDataContainer(ASE)
         val tiles = tilesIDC.mainBitmap.slice()
