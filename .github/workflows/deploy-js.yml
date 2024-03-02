@@ -1,4 +1,5 @@
 # Deploy JS game to GitHub Pages
+name: Deploy JS
 
 on:
   push:
