@@ -10,6 +10,10 @@ env:
   JAVA_DISTRIBUTION: zulu
   JAVA_VERSION: 21
 
+concurrency:
+  group: "testing"
+  cancel-in-progress: false
+
 jobs:
   build:
 
