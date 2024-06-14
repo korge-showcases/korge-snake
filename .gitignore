@@ -1,9 +1,11 @@
 /.gradle
 /.idea
+/.kotlin
 /build
 /modules
 /bundles
 /deps
+/.gitignore
 *.iml
 *.hprof
 *.log
