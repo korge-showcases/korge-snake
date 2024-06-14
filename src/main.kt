@@ -95,9 +95,9 @@ enum class SnakeMove(val dir: PointInt) {
     val isVertical get() = dir.y != 0
 }
 
-data class Snake(val pos: List<PointInt>) {
+data class Snake(val pos: List<PointInt>, val maxLen: Int = 10) {
     fun withExtraMove(move: SnakeMove): Snake {
-        return Snake((pos + (pos.last() + move.dir)).takeLast(10))
+        return Snake((pos + (pos.last() + move.dir)).takeLast(maxLen), maxLen)
     }
 
     fun pos(index: Int): PointInt = pos.getOrElse(index) { PointInt(0, 0) }
@@ -183,7 +183,9 @@ data class Snake(val pos: List<PointInt>) {
                     //println("$p0, $p1")
                 }
             }
-            map.push(p.x, p.y, tile)
+            if (map.inside(p.x, p.y)) {
+                map.push(p.x, p.y, tile)
+            }
         }
     }
 }
