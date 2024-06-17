@@ -70,7 +70,7 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
         //tileMap.map.push(4, 4, Tile(7))
         //tileMap.map.push(4, 4, Tile(tile, orientation))
 
-        var snake = Snake(listOf(PointInt(5, 5)), maxLen = 2)
+        var snake = Snake(listOf(PointInt(5, 5)), maxLen = 8)
             .withExtraMove(SnakeMove.RIGHT)
             //.withExtraMove(SnakeMove.RIGHT)
         snake.render(ints, snakeMap.map)
@@ -109,6 +109,7 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
             down(Key.RIGHT) { direction = SnakeMove.RIGHT }
             down(Key.UP) { direction = SnakeMove.UP }
             down(Key.DOWN) { direction = SnakeMove.DOWN }
+            down(Key.SPACE) { speed = if (speed != 0.0) 0.0 else 1.0 }
 
             //down(Key.LEFT) { updateOrientation { it.rotatedLeft() } }
             //down(Key.RIGHT) { updateOrientation { it.rotatedRight() } }
