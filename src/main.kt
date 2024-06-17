@@ -8,11 +8,12 @@ import korlibs.io.file.std.*
 import korlibs.korge.*
 import korlibs.korge.input.*
 import korlibs.korge.scene.*
+import korlibs.korge.time.*
 import korlibs.korge.view.*
 import korlibs.korge.view.tiles.*
 import korlibs.math.geom.*
 import korlibs.math.geom.slice.*
-import kotlin.time.Duration.Companion.milliseconds
+import korlibs.time.*
 
 suspend fun main() = Korge(windowSize = Size(512, 512), backgroundColor = Colors["#2b2b2b"]) {
     val sceneContainer = sceneContainer()
@@ -20,67 +21,95 @@ suspend fun main() = Korge(windowSize = Size(512, 512), backgroundColor = Colors
     sceneContainer.changeTo { MyScene() }
 }
 
-class MyScene : PixelatedScene(256, 196) {
+class MyScene : PixelatedScene(256 * 2, 196 * 2) {
     override suspend fun SContainer.sceneMain() {
+        solidRect(500, 500, Colors.DIMGRAY)
         val tilesIDC = resourcesVfs["tiles.ase"].readImageDataContainer(ASE)
         val tiles = tilesIDC.mainBitmap.slice()
 
         val tileSet = TileSet(tiles.splitInRows(16, 16).mapIndexed { index, slice -> TileSetTileInfo(index, slice) })
-        val tileMap = tileMap(TileMapData(32, 32, tileSet = tileSet))
+        val tileMap = tileMap(TileMapData(32, 24, tileSet = tileSet))
+        val snakeMap = tileMap(TileMapData(32, 24, tileSet = tileSet))
+        val ints = IntArray2(tileMap.map.width, tileMap.map.height, 0)
+        ints[RectangleInt(0, 0, ints.width, 1)] = 1
+        ints[RectangleInt(0, 0, 1, ints.height)] = 1
+        ints[RectangleInt(0, ints.height - 1, ints.width, 1)] = 1
+        ints[RectangleInt(ints.width - 1, 0, 1, ints.height)] = 1
+        ints[1, 1] = 1
+        ints[15, 15] = 2
 
-        for (n in 0 until 64) {
-            tileMap.map[n, 0] = Tile(n, SliceOrientation.NORMAL)
-        }
+        IntGridToTileGrid(ints, CombinedRuleMatcher(WallsProvider, AppleProvider), tileMap.map)
+
+        tileMap.map[10, 10] = WallsProvider.get(SimpleTileSpec(down = true, right = true, left = true, up = true))
+
+        //for (n in 0 until 64) tileMap.map[n, 0] = Tile(n, SliceOrientation.NORMAL)
 
         //var tile = 1
         //var tile = 11
         //var tile = 4
-        var tile = 5
-        var offset = Point(0, 0)
-        var orientation = SliceOrientation.NORMAL
-        tileMap.map.push(4, 4, Tile(7))
-        tileMap.map.push(4, 4, Tile(tile, orientation))
+        //var tile = 5
+        //var offset = Point(0, 0)
+        //var orientation = SliceOrientation.NORMAL
+        //tileMap.map.push(4, 4, Tile(7))
+        //tileMap.map.push(4, 4, Tile(tile, orientation))
 
         var snake = Snake(listOf(PointInt(5, 5)))
             .withExtraMove(SnakeMove.RIGHT)
             .withExtraMove(SnakeMove.RIGHT)
-            .withExtraMove(SnakeMove.DOWN)
-            .withExtraMove(SnakeMove.DOWN)
-            .withExtraMove(SnakeMove.RIGHT)
-            .withExtraMove(SnakeMove.UP)
-        snake.render(tileMap.map)
+            //.withExtraMove(SnakeMove.DOWN)
+            //.withExtraMove(SnakeMove.DOWN)
+            //.withExtraMove(SnakeMove.RIGHT)
+            //.withExtraMove(SnakeMove.UP)
+        snake.render(snakeMap.map)
 
-        fun updateOrientation(
-            updateOffset: (Point) -> Point = { it },
-            update: (SliceOrientation) -> SliceOrientation = { it }
-        ) {
-            offset = updateOffset(offset)
-            orientation = update(orientation)
-            println("orientation=$orientation")
-            tileMap.map[4, 4] = Tile(tile, orientation, offset.x.toInt(), offset.y.toInt())
-        }
+        //fun updateOrientation(
+        //    updateOffset: (Point) -> Point = { it },
+        //    update: (SliceOrientation) -> SliceOrientation = { it }
+        //) {
+        //    offset = updateOffset(offset)
+        //    orientation = update(orientation)
+        //    println("orientation=$orientation")
+        //    tileMap.map[4, 4] = Tile(tile, orientation, offset.x.toInt(), offset.y.toInt())
+        //}
+
+        var direction: SnakeMove = SnakeMove.RIGHT
 
         fun snakeMove(move: SnakeMove) {
-            snake.clear(tileMap.map)
+            snake.clear(snakeMap.map)
             snake = snake.withExtraMove(move)
-            snake.render(tileMap.map)
+            snake.render(snakeMap.map)
+        }
+
+        interval(0.1.fastSeconds) {
+            snakeMove(direction)
         }
 
         keys {
-            down(Key.LEFT) { snakeMove(SnakeMove.LEFT) }
-            down(Key.RIGHT) { snakeMove(SnakeMove.RIGHT) }
-            down(Key.UP) { snakeMove(SnakeMove.UP) }
-            down(Key.DOWN) { snakeMove(SnakeMove.DOWN) }
+            down(Key.LEFT) { direction = SnakeMove.LEFT }
+            down(Key.RIGHT) { direction = SnakeMove.RIGHT }
+            down(Key.UP) { direction = SnakeMove.UP }
+            down(Key.DOWN) { direction = SnakeMove.DOWN }
 
+            //down(Key.LEFT) { updateOrientation { it.rotatedLeft() } }
+            //down(Key.RIGHT) { updateOrientation { it.rotatedRight() } }
+            //down(Key.Y) { updateOrientation { it.flippedY() } }
+            //down(Key.X) { updateOrientation { it.flippedX() } }
+            //downFrame(Key.W, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, -1) }) }
+            //downFrame(Key.A, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(-1, 0) }) }
+            //downFrame(Key.S, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, +1) }) }
+            //downFrame(Key.D, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(+1, 0) }) }
+        }
+    }
+}
 
-            down(Key.LEFT) { updateOrientation { it.rotatedLeft() } }
-            down(Key.RIGHT) { updateOrientation { it.rotatedRight() } }
-            down(Key.Y) { updateOrientation { it.flippedY() } }
-            down(Key.X) { updateOrientation { it.flippedX() } }
-            downFrame(Key.W, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, -1) }) }
-            downFrame(Key.A, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(-1, 0) }) }
-            downFrame(Key.S, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, +1) }) }
-            downFrame(Key.D, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(+1, 0) }) }
+operator fun IntArray2.set(rect: RectangleInt, value: Int) {
+    val l = rect.left.coerceIn(0, width)
+    val r = rect.right.coerceIn(0, width)
+    val u = rect.top.coerceIn(0, height)
+    val d = rect.bottom.coerceIn(0, height)
+    for (x in l until r) {
+        for (y in u until d) {
+            this.setOr(x, y, value)
         }
     }
 }
@@ -90,9 +119,22 @@ enum class SnakeMove(val dir: PointInt) {
     RIGHT(PointInt(+1, 0)),
     UP(PointInt(0, -1)),
     DOWN(PointInt(0, +1)),
-    ;
+    NONE(PointInt(0, 0)),
+;
+
+    val comingFromLeft get() = this == RIGHT
+    val comingFromRight get() = this == LEFT
+    val comingFromUp get() = this == DOWN
+    val comingFromDown get() = this == UP
+
+    val left get() = this == LEFT
+    val right get() = this == RIGHT
+    val up get() = this == UP
+    val down get() = this == DOWN
+
     val isHorizontal get() = dir.x != 0
     val isVertical get() = dir.y != 0
+    val isNone get() = !isHorizontal && !isVertical
 }
 
 data class Snake(val pos: List<PointInt>, val maxLen: Int = 10) {
@@ -109,7 +151,7 @@ data class Snake(val pos: List<PointInt>, val maxLen: Int = 10) {
             p1.x < p0.x -> SnakeMove.LEFT
             p1.y > p0.y -> SnakeMove.DOWN
             p1.y < p0.y -> SnakeMove.UP
-            else -> SnakeMove.RIGHT
+            else -> SnakeMove.NONE
         }
     }
 
@@ -135,57 +177,44 @@ data class Snake(val pos: List<PointInt>, val maxLen: Int = 10) {
             val isLast = i == pos.size - 1
             val p0 = dir(i - 1)
             val p1 = dir(i)
+
             val tile = when {
-                isFirst -> {
-                    Tile(1,
-                        when (p1) {
-                            SnakeMove.RIGHT -> SliceOrientation.NORMAL
-                            SnakeMove.LEFT -> SliceOrientation.ROTATE_180
-                            SnakeMove.DOWN -> SliceOrientation.ROTATE_90
-                            SnakeMove.UP -> SliceOrientation.ROTATE_270
-                        }
-                        , 0, 0)
+                isFirst || isLast -> {
+                    val p = if (isLast) p0 else p1
+                    (if (isLast) SnakeHeadProvider else SnakeProvider).get(SimpleTileSpec(p.left, p.up, p.right, p.down))
                 }
-                isLast -> Tile(4,
-                    when (p0) {
-                        SnakeMove.RIGHT -> SliceOrientation.NORMAL
-                        SnakeMove.LEFT -> SliceOrientation.ROTATE_180
-                        SnakeMove.DOWN -> SliceOrientation.ROTATE_90
-                        SnakeMove.UP -> SliceOrientation.ROTATE_270
-                    }
-                , 0, 0)
-                else -> {
-                    if (p0 == p1) {
-                        Tile(2, when (p0) {
-                            SnakeMove.RIGHT -> SliceOrientation.NORMAL
-                            SnakeMove.LEFT -> SliceOrientation.ROTATE_180
-                            SnakeMove.DOWN -> SliceOrientation.ROTATE_90
-                            SnakeMove.UP -> SliceOrientation.ROTATE_270
-                        }, 0, 0)
-                    } else {
-                        Tile(3, when (p0 to p1) {
-                            SnakeMove.RIGHT to SnakeMove.DOWN -> SliceOrientation.NORMAL
-                            SnakeMove.UP to SnakeMove.LEFT -> SliceOrientation.NORMAL
-
-                            SnakeMove.RIGHT to SnakeMove.UP -> SliceOrientation.ROTATE_90
-                            SnakeMove.DOWN to SnakeMove.LEFT -> SliceOrientation.ROTATE_90
-
-                            SnakeMove.LEFT to SnakeMove.UP -> SliceOrientation.ROTATE_180
-                            SnakeMove.DOWN to SnakeMove.RIGHT -> SliceOrientation.ROTATE_180
-
-                            SnakeMove.LEFT to SnakeMove.DOWN -> SliceOrientation.ROTATE_270
-                            SnakeMove.UP to SnakeMove.RIGHT -> SliceOrientation.ROTATE_270
-
-
-                            else -> SliceOrientation.ROTATE_270
-                        }, 0, 0)
-                    }
-                    //println("$p0, $p1")
-                }
+                else -> SnakeProvider.get(SimpleTileSpec(
+                    left = p0.comingFromLeft || p1.left,
+                    up = p0.comingFromUp || p1.up,
+                    right = p0.comingFromRight || p1.right,
+                    down = p0.comingFromDown || p1.down
+                ))
             }
-            if (map.inside(p.x, p.y)) {
-                map.push(p.x, p.y, tile)
-            }
+            map.pushInside(p.x, p.y, tile)
         }
     }
 }
+
+object SnakeProvider : ISimpleTileProvider by (SimpleTileProvider(value = 3).also {
+    it.rule(SimpleRule(Tile(1), right = true))
+    it.rule(SimpleRule(Tile(2), left = true, right = true))
+    it.rule(SimpleRule(Tile(3), left = true, down = true))
+})
+
+object SnakeHeadProvider : ISimpleTileProvider by (SimpleTileProvider(value = 3).also {
+    it.rule(SimpleRule(Tile(0)))
+    it.rule(SimpleRule(Tile(4), right = true))
+})
+
+object AppleProvider : ISimpleTileProvider by (SimpleTileProvider(value = 2).also {
+    it.rule(SimpleRule(Tile(12)))
+})
+
+object WallsProvider : ISimpleTileProvider by (SimpleTileProvider(value = 1).also {
+    it.rule(SimpleRule(Tile(16)))
+    it.rule(SimpleRule(Tile(17), right = true))
+    it.rule(SimpleRule(Tile(18), left = true, right = true))
+    it.rule(SimpleRule(Tile(19), left = true, down = true))
+    it.rule(SimpleRule(Tile(20), up = true, left = true, down = true))
+    it.rule(SimpleRule(Tile(21), up = true, left = true, right = true, down = true))
+})
