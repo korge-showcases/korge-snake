@@ -1,6 +1,5 @@
 import korlibs.datastructure.*
 import korlibs.image.tiles.*
-import korlibs.io.async.*
 import korlibs.math.geom.*
 import korlibs.memory.*
 import kotlinx.atomicfu.*
