@@ -49,7 +49,7 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
 
         fun putRandomApple() {
             while (true) {
-                val p: PointInt = Random[Rectangle(0, 0, ints.width, ints.height)].toInt()
+                val p: PointInt = Random[Rectangle(0, 0, ints.width - 0.5, ints.height - 0.5)].toIntFloor()
                 if (ints[p] == GROUND) {
                     ints[p] = APPLE
                     break
