@@ -5,66 +5,6 @@ import korlibs.memory.*
 import kotlinx.atomicfu.*
 import kotlin.math.*
 
-open class ObservableIntArray2(val width: Int, val height: Int, val default: Int = 0) {
-    val data = IntArray2(width, height, default)
-    //private val listeners = Signal2<ObservableIntArray2, RectangleInt>()
-
-    open fun updated(rect: RectangleInt) {
-    }
-
-    private var locked = atomic(0)
-    private var bb = BoundsBuilder()
-
-    inline fun <T> lock(block: () -> T): T {
-        lock()
-        try {
-            return block()
-        } finally {
-            unlock()
-        }
-    }
-
-    @PublishedApi internal fun lock() {
-        locked.incrementAndGet()
-    }
-    @PublishedApi internal fun unlock() {
-        if (locked.decrementAndGet() <= 0) {
-            flush()
-        }
-    }
-
-    private fun flush() {
-        if (locked.value == 0 && bb.isNotEmpty) {
-            updated(bb.bounds.toInt())
-            bb = BoundsBuilder.EMPTY
-        }
-    }
-
-    operator fun set(rect: RectangleInt, value: Int) {
-        val l = rect.left.coerceIn(0, width)
-        val r = rect.right.coerceIn(0, width)
-        val u = rect.top.coerceIn(0, height)
-        val d = rect.bottom.coerceIn(0, height)
-        for (x in l until r) {
-            for (y in u until d) {
-                data.setOr(x, y, value)
-            }
-        }
-        bb += rect.toFloat()
-        flush()
-    }
-
-    operator fun get(p: PointInt): Int = this[p.x, p.y]
-    operator fun get(x: Int, y: Int): Int = if (data.inside(x, y)) data[x, y] else default
-    operator fun set(p: PointInt, value: Int) { this[p.x, p.y] = value }
-
-    operator fun set(x: Int, y: Int, value: Int) {
-        if (data.inside(x, y)) data[x, y] = value
-        bb += Rectangle(x, y, 1, 1)
-        flush()
-    }
-}
-
 fun IntGridToTileGrid(ints: IntArray2, rules: IRuleMatcher, tiles: TileMapData, updated: RectangleInt = RectangleInt(0, 0, ints.width, ints.height)) {
     val l = (updated.left - rules.maxDist).coerceIn(0, ints.width)
     val r = (updated.right + rules.maxDist).coerceIn(0, ints.width)
@@ -75,16 +15,6 @@ fun IntGridToTileGrid(ints: IntArray2, rules: IRuleMatcher, tiles: TileMapData, 
             tiles[x, y] = rules.get(ints, x, y)
         }
     }
-}
-
-fun IntArray2.getOr(x: Int, y: Int, default: Int = -1): Int {
-    if (!inside(x, y)) return default
-    return this[x, y]
-}
-
-fun IntArray2.setOr(x: Int, y: Int, value: Int) {
-    if (!inside(x, y)) return
-    this[x, y] = value
 }
 
 data class SimpleTileSpec(
@@ -114,7 +44,9 @@ data class SimpleRule(
     val up get() = spec.up
     val down get() = spec.down
 
-    constructor(tile: Tile, left: Boolean = false, up: Boolean = false, right: Boolean = false, down: Boolean = false) : this(tile, SimpleTileSpec(left, up, right, down))
+    constructor(tile: Tile, left: Boolean = false, up: Boolean = false, right: Boolean = false, down: Boolean = false) : this(tile,
+        SimpleTileSpec(left, up, right, down)
+    )
 
     fun flippedX(): SimpleRule = SimpleRule(tile.flippedX(), right, up, left, down)
     fun flippedY(): SimpleRule = SimpleRule(tile.flippedY(), left, down, right, up)
@@ -204,6 +136,8 @@ class SimpleTileProvider(val value: Int) : ISimpleTileProvider, IRuleMatcher {
         val down = ints.getOr(x, y + 1) == value
         return get(SimpleTileSpec(left, up, right, down))
     }
+
+    fun IntArray2.getOr(x: Int, y: Int): Int = if (inside(x, y)) get(x, y) else 0
 }
 
 data class TileMatch(val id: Int, val offset: PointInt, val eq: Boolean = true) : IRuleMatcherMatch {

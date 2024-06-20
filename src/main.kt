@@ -5,6 +5,7 @@ import korlibs.image.color.*
 import korlibs.image.format.*
 import korlibs.image.tiles.*
 import korlibs.io.file.std.*
+import korlibs.io.file.sync.*
 import korlibs.korge.*
 import korlibs.korge.input.*
 import korlibs.korge.scene.*
@@ -17,7 +18,8 @@ import korlibs.math.random.*
 import korlibs.time.*
 import kotlin.random.*
 
-suspend fun main() = Korge(windowSize = Size(256 * 2, 196 * 2), backgroundColor = Colors.DIMGRAY) {
+suspend fun main() = Korge(windowSize = Size(256 * 2, 196 * 2), backgroundColor = Colors.DIMGRAY, displayMode = KorgeDisplayMode.CENTER.copy(clipBorders = false)) {
+    println("fir-korge-extension-test")
     val sceneContainer = sceneContainer()
 
     sceneContainer.changeTo { MyScene() }
@@ -25,7 +27,8 @@ suspend fun main() = Korge(windowSize = Size(256 * 2, 196 * 2), backgroundColor 
 
 //class MirroredInt
 
-class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
+//class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
+class MyScene : ScaledScene(256 * 2, 196 * 2, sceneSmoothing = true) {
     override suspend fun SContainer.sceneMain() {
         val tilesIDC = resourcesVfs["tiles.ase"].readImageDataContainer(ASE)
         val tiles = tilesIDC.mainBitmap.slice()
@@ -33,11 +36,9 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
         val tileSet = TileSet(tiles.splitInRows(16, 16).mapIndexed { index, slice -> TileSetTileInfo(index, slice) })
         val tileMap = tileMap(TileMapData(32, 24, tileSet = tileSet))
         val snakeMap = tileMap(TileMapData(32, 24, tileSet = tileSet))
-        val ints = object : ObservableIntArray2(tileMap.map.width, tileMap.map.height, GROUND) {
-            val rules = CombinedRuleMatcher(WallsProvider, AppleProvider)
-            override fun updated(rect: RectangleInt) {
-                IntGridToTileGrid(this.data, rules, tileMap.map, rect)
-            }
+        val rules = CombinedRuleMatcher(WallsProvider, AppleProvider)
+        val ints = IntArray2(tileMap.map.width, tileMap.map.height, GROUND).observe { rect ->
+            IntGridToTileGrid(this.base as IntArray2, rules, tileMap.map, rect)
         }
         ints.lock {
             ints[RectangleInt(0, 0, ints.width, 1)] = WALL
@@ -59,31 +60,10 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
 
         putRandomApple()
 
-        //for (n in 0 until 64) tileMap.map[n, 0] = Tile(n, SliceOrientation.NORMAL)
-
-        //var tile = 1
-        //var tile = 11
-        //var tile = 4
-        //var tile = 5
-        //var offset = Point(0, 0)
-        //var orientation = SliceOrientation.NORMAL
-        //tileMap.map.push(4, 4, Tile(7))
-        //tileMap.map.push(4, 4, Tile(tile, orientation))
-
         var snake = Snake(listOf(PointInt(5, 5)), maxLen = 8)
             .withExtraMove(SnakeMove.RIGHT)
             //.withExtraMove(SnakeMove.RIGHT)
         snake.render(ints, snakeMap.map)
-
-        //fun updateOrientation(
-        //    updateOffset: (Point) -> Point = { it },
-        //    update: (SliceOrientation) -> SliceOrientation = { it }
-        //) {
-        //    offset = updateOffset(offset)
-        //    orientation = update(orientation)
-        //    println("orientation=$orientation")
-        //    tileMap.map[4, 4] = Tile(tile, orientation, offset.x.toInt(), offset.y.toInt())
-        //}
 
         var direction: SnakeMove = SnakeMove.RIGHT
 
@@ -110,27 +90,6 @@ class MyScene : PixelatedScene(256 * 2, 196 * 2, sceneSmoothing = true) {
             down(Key.UP) { direction = SnakeMove.UP }
             down(Key.DOWN) { direction = SnakeMove.DOWN }
             down(Key.SPACE) { speed = if (speed != 0.0) 0.0 else 1.0 }
-
-            //down(Key.LEFT) { updateOrientation { it.rotatedLeft() } }
-            //down(Key.RIGHT) { updateOrientation { it.rotatedRight() } }
-            //down(Key.Y) { updateOrientation { it.flippedY() } }
-            //down(Key.X) { updateOrientation { it.flippedX() } }
-            //downFrame(Key.W, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, -1) }) }
-            //downFrame(Key.A, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(-1, 0) }) }
-            //downFrame(Key.S, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(0, +1) }) }
-            //downFrame(Key.D, dt = 16.milliseconds) { updateOrientation(updateOffset = { it + Point(+1, 0) }) }
-        }
-    }
-}
-
-operator fun IntArray2.set(rect: RectangleInt, value: Int) {
-    val l = rect.left.coerceIn(0, width)
-    val r = rect.right.coerceIn(0, width)
-    val u = rect.top.coerceIn(0, height)
-    val d = rect.bottom.coerceIn(0, height)
-    for (x in l until r) {
-        for (y in u until d) {
-            this.setOr(x, y, value)
         }
     }
 }
@@ -203,14 +162,23 @@ data class Snake(val pos: List<PointInt>, val maxLen: Int = 10) {
             val tile = when {
                 isFirst || isLast -> {
                     val p = if (isLast) p0 else p1
-                    (if (isLast) SnakeHeadProvider else SnakeProvider).get(SimpleTileSpec(p.left, p.up, p.right, p.down))
+                    (if (isLast) SnakeHeadProvider else SnakeProvider).get(
+                        SimpleTileSpec(
+                            p.left,
+                            p.up,
+                            p.right,
+                            p.down
+                        )
+                    )
                 }
-                else -> SnakeProvider.get(SimpleTileSpec(
-                    left = p0.comingFromLeft || p1.left,
-                    up = p0.comingFromUp || p1.up,
-                    right = p0.comingFromRight || p1.right,
-                    down = p0.comingFromDown || p1.down
-                ))
+                else -> SnakeProvider.get(
+                    SimpleTileSpec(
+                        left = p0.comingFromLeft || p1.left,
+                        up = p0.comingFromUp || p1.up,
+                        right = p0.comingFromRight || p1.right,
+                        down = p0.comingFromDown || p1.down
+                    )
+                )
             }
             map.pushInside(p.x, p.y, tile)
             ints[p] = 3
@@ -241,11 +209,6 @@ object WallsProvider : ISimpleTileProvider by (SimpleTileProvider(value = 1).als
     it.rule(SimpleRule(Tile(20), up = true, left = true, down = true))
     it.rule(SimpleRule(Tile(21), up = true, left = true, right = true, down = true))
 })
-
-operator fun IntArray2.get(p: PointInt): Int = this.getOr(p.x, p.y)
-operator fun IntArray2.set(p: PointInt, value: Int) { if (inside(p.x, p.y)) this[p.x, p.y] = value }
-//fun IStackedIntArray2.get(p: PointInt): Int = this[p.x, p.y]
-//fun IStackedLongArray2.get(p: PointInt): Long = this[p.x, p.y]
 
 val GROUND = 0
 val WALL = 1
