@@ -141,7 +141,7 @@ class IngameScene : PixelatedScene(32 * 16, 32 * 16, sceneSmoothing = true), Sta
                 snake = snake.copy(length = snake.length + 1)
                 gameInfo = gameInfo.withIncrementedScore(+1)
             }
-            headValue == WALL || headValue == SNAKE -> {
+            headValue != EMPTY -> {
                 change(::gameOver)
                 return
             }
@@ -155,16 +155,3 @@ class IngameScene : PixelatedScene(32 * 16, 32 * 16, sceneSmoothing = true), Sta
         //println(intMap.base)
     }
 }
-
-object AppleProvider : ISimpleTileProvider by (SimpleTileProvider(value = APPLE).also {
-    it.rule(SimpleRule(Tile(12)))
-})
-
-object WallProvider : ISimpleTileProvider by (SimpleTileProvider(value = WALL).also {
-    it.rule(SimpleRule(Tile(16)))
-    it.rule(SimpleRule(Tile(17), right = true))
-    it.rule(SimpleRule(Tile(18), left = true, right = true))
-    it.rule(SimpleRule(Tile(19), left = true, down = true))
-    it.rule(SimpleRule(Tile(20), left = true, up = true, down = true))
-    it.rule(SimpleRule(Tile(21), left = true, up = true, down = true, right = true))
-})

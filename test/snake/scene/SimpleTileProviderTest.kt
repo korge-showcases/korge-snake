@@ -1,6 +1,7 @@
 package snake.scene
 
 import korlibs.image.tiles.*
+import snake.model.*
 import kotlin.test.*
 
 class SimpleTileProviderTest {
