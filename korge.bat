@@ -2,9 +2,9 @@
 
 SETLOCAL EnableDelayedExpansion
 
-SET INSTALLER_VERSION=0.0.6
+SET INSTALLER_VERSION=0.0.7
 SET INSTALLER_URL=https://github.com/korlibs/compiler.korge.org/releases/download/v%INSTALLER_VERSION%/korge-kotlin-compiler-all.tar.xz
-SET INSTALLER_SHA256=f4290aa0452e2a621b475568e4c4b03e75fad16176677dfa7bf0b8a1eb7d79cb
+SET INSTALLER_SHA256=d56170fef85dba9944379d8b9e8f8feb557fd85e702fd10c853c4e87229d17a0
 
 SET KORGEDIR=%USERPROFILE%\.korge
 SET JAVA=%KORGEDIR%\jre-21\bin\java.exe
@@ -16,6 +16,9 @@ IF NOT EXIST "%INSTALLER_LOCAL_FILE%" (
     CALL :DOWNLOAD_FILE "%INSTALLER_URL%" "%INSTALLER_LOCAL_FILE%.tar.xz" "%INSTALLER_SHA256%"
     CALL :EXTRACT_TAR "%INSTALLER_LOCAL_FILE%.tar.xz" "%INSTALLER_PATH%" 0 "%INSTALLER_LOCAL_FILE%"
     COPY /Y "%INSTALLER_PATH%\korge-kotlin-compiler-all.jar" %INSTALLER_LOCAL_FILE% > NUL 2> NUL
+    DEL "%INSTALLER_PATH%\korge-kotlin-compiler-all.jar" > NUL 2> NUL
+    DEL "%INSTALLER_LOCAL_FILE%.tar.xz" > NUL 2> NUL
+    DEL "%INSTALLER_LOCAL_FILE%.tar.xz.sha256" > NUL 2> NUL
 )
 
 IF NOT EXIST "%JAVA%" (
@@ -25,11 +28,10 @@ IF NOT EXIST "%JAVA%" (
         CALL :DOWNLOAD_FILE "https://github.com/korlibs/universal-jre/releases/download/0.0.1/microsoft-jre-21.0.3-windows-x64.tar.xz" "%KORGEDIR%\jre-21.tar.xz" "6D16528A2201DCBE0ADDB0622F5CBE0CD6FA84AE937D3830FC1F74B32132C37B"
     )
     CALL :EXTRACT_TAR "%KORGEDIR%\jre-21.tar.xz" "%KORGEDIR%\jre-21" 1 "%JAVA%"
+    DEL "%KORGEDIR%\jre-21.tar.xz" > NUL 2> NUL
+    DEL "%KORGEDIR%\jre-21.tar.xz.sha256" > NUL 2> NUL
 )
 
-REM CALL :NORMALIZE_PATH "."
-REM echo %RETVAL%
-REM "%JAVA%" "-Duser.dir=%RETVAL%" -jar "%INSTALLER_LOCAL_FILE%" %*
 "%JAVA%" -jar "%INSTALLER_LOCAL_FILE%" %*
 
 EXIT /B
